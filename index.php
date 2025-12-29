@@ -10,7 +10,7 @@ require __DIR__ . '/config.php';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cofre do Clique</title>
+<title>💸Cofre do Clique💸</title>
 <style>
 :root {
   --bg:#06130d; --panel:#0c1f17; --accent:#32e36d; --accent2:#0f9b48; --text:#e7fff2;
