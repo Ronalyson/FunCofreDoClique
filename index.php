@@ -1,4 +1,10 @@
-﻿<?php require __DIR__ . '/config.php'; ?>
+﻿<?php
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+}
+require __DIR__ . '/config.php';
+?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -148,6 +154,7 @@ function getUsername() {
 }
 
 const username = getUsername();
+const csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>';
 document.getElementById('user-label').textContent = `Ola, ${username}!`;
 
 const fmt = v => (v/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -184,7 +191,6 @@ function startAmbient() {
   gain.gain.value = 0.008;
   osc.connect(gain).connect(audioCtx.destination);
   osc.start();
-  // Gentle wobble
   const lfo = audioCtx.createOscillator();
   const lfoGain = audioCtx.createGain();
   lfo.frequency.value = 0.07;
@@ -194,7 +200,9 @@ function startAmbient() {
 }
 
 async function fetchState() {
-  const res = await fetch('api.php?action=state');
+  const res = await fetch('api.php?action=state', {
+    headers:{'X-CSRF': csrfToken}
+  });
   const data = await res.json();
   render(data);
 }
@@ -228,7 +236,7 @@ document.getElementById('btn-click').onclick = async () => {
   startAmbient();
   const res = await fetch('api.php?action=click', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','X-CSRF': csrfToken},
     body: JSON.stringify({name: username})
   });
   const data = await res.json();
@@ -255,7 +263,7 @@ document.getElementById('form-withdraw').onsubmit = async (e) => {
   };
   const res = await fetch('api.php?action=withdraw', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','X-CSRF': csrfToken},
     body: JSON.stringify(payload)
   });
   const data = await res.json();
