@@ -100,6 +100,12 @@ function handle_withdraw(PDO $pdo): array {
         return ['error' => 'Valor acima do disponível'];
     }
 
+    $zeroOut = ($available - $amount_cents) === 0;
+    if ($zeroOut) {
+        $note = "Sacou tudo e deixou todo mundo liso";
+        $reason = substr(trim($note . ' — ' . $reason), 0, 500);
+    }
+
     $stmt = $pdo->prepare('INSERT INTO withdrawals (name, reason, amount_cents) VALUES (?, ?, ?)');
     $stmt->execute([$name, $reason, $amount_cents]);
 
