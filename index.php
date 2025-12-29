@@ -18,8 +18,15 @@ body {
     radial-gradient(circle at 80% 0%, rgba(11,85,45,0.45), transparent 35%),
     linear-gradient(130deg, #041009 0%, #072015 45%, #021a0f 100%);
   color:var(--text); display:flex; justify-content:center; padding:24px;
-  min-height:100vh; overflow-x:hidden;
+  min-height:100vh; overflow-x:hidden; position:relative;
 }
+.scanline {
+  position:fixed; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 3px, transparent 5px);
+  mix-blend-mode:soft-light; opacity:0.35; animation:scan 8s linear infinite;
+}
+@keyframes scan {0%{background-position:0 0;}100%{background-position:0 100%;}}
+
 .container {
   width: min(1100px, 100%);
   background:linear-gradient(150deg, rgba(12,31,23,0.9), rgba(5,18,11,0.94));
@@ -67,6 +74,10 @@ textarea {resize:vertical; min-height:80px;}
 .meme {margin-top:12px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);} 
 .pulse {animation:pulse 2s infinite;} 
 @keyframes pulse {0%{box-shadow:0 0 0 0 rgba(50,227,109,0.3);}70%{box-shadow:0 0 0 14px rgba(50,227,109,0);}100%{box-shadow:0 0 0 0 rgba(50,227,109,0);}} 
+.sparkle {position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle, rgba(255,255,255,0.25) 0, transparent 45%); opacity:0; animation:spark 2s ease-in-out infinite; mix-blend-mode:screen;}
+.sparkle.two {animation-delay:0.8s;}
+.sparkle.three {animation-delay:1.6s;}
+@keyframes spark {0%{transform:translate(-30%, -30%) scale(0.7); opacity:0;}30%{opacity:0.5;}60%{transform:translate(60%, 40%) scale(1); opacity:0.2;}100%{opacity:0; transform:translate(110%, 70%) scale(1.3);}}
 @media (max-width:800px){
   .grid{grid-template-columns:1fr; gap:14px;}
   header{flex-direction:column; align-items:flex-start;}
@@ -75,9 +86,13 @@ textarea {resize:vertical; min-height:80px;}
 </style>
 </head>
 <body>
+<div class="scanline"></div>
 <div class="container">
   <div class="orb one"></div>
   <div class="orb two"></div>
+  <div class="sparkle one"></div>
+  <div class="sparkle two"></div>
+  <div class="sparkle three"></div>
   <header>
     <div>
       <h1>Cofre do Clique</h1>
@@ -142,6 +157,42 @@ const withdrawList = document.getElementById('withdrawals');
 const lastClicksEl = document.getElementById('last-clicks');
 const memeEl = document.getElementById('meme');
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let ambientStarted = false;
+
+function playClickSound() {
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(420, now);
+  osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+  gain.gain.setValueAtTime(0.05, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.2);
+}
+
+function startAmbient() {
+  if (ambientStarted) return;
+  ambientStarted = true;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 90;
+  gain.gain.value = 0.008;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  // Gentle wobble
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.07;
+  lfoGain.gain.value = 12;
+  lfo.connect(lfoGain).connect(osc.frequency);
+  lfo.start();
+}
+
 async function fetchState() {
   const res = await fetch('api.php?action=state');
   const data = await res.json();
@@ -173,6 +224,8 @@ function escapeHtml(str='') {
 }
 
 document.getElementById('btn-click').onclick = async () => {
+  playClickSound();
+  startAmbient();
   const res = await fetch('api.php?action=click', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -192,6 +245,8 @@ document.getElementById('close-modal').onclick = () => { modal.style.display = '
 
 document.getElementById('form-withdraw').onsubmit = async (e) => {
   e.preventDefault();
+  playClickSound();
+  startAmbient();
   const form = e.target;
   const payload = {
     name: username,
